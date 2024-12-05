@@ -1,0 +1,55 @@
+export ZOPEN_CATEGORIES="library"
+export ZOPEN_NAME="zedc"
+export ZOPEN_CONFIGURE=skip
+export ZOPEN_CHECK=zopen_check
+export ZOPEN_MAKE=skip
+
+zopen_check()
+{
+  # Nothing to check at this time
+}
+
+zopen_append_to_env()
+{
+cat <<ZZ
+for p in \$ZOPEN_OLD_LIBPATH; do
+    if [ -x "\$p/libzz64.so" ]; then
+        export LIBPATH="\${LIBPATH}:\${p}"
+        export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
+        export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzz64"
+        zz64found=true
+        break
+    fi
+done
+
+if ! \${zz64found} ; then
+    echo "Unable to find libzz64.so for python" >&2
+    return 1
+fi
+return 0
+
+ZZ
+}
+
+
+zopen_get_version()
+{
+  set -e
+  if [ ! -d "$TMPDIR" ]; then
+    TMPDIR=/tmp
+  fi
+  TMP_EXE=$TMPDIR/zedclibver$$
+  TMP_CPP=$TMPDIR/zedclibver$$.cc
+
+  echo '
+    #include <zlib.h>
+    #include <stdio.h>
+
+    int main(int argc, char** argv) {
+      printf("%s", zlibVersion);
+    }
+  ' >$TMP_CPP
+
+  (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L ../build/lib -o$TMP_EXE $TMP_CPP -lzz64)
+  $TMP_EXE | tr -d 'v'  && rm $TMP_CPP && rm $TMP_EXE
+}
