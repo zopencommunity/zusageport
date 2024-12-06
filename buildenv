@@ -1,40 +1,71 @@
+export ZOPEN_TYPE="BARE"
 export ZOPEN_CATEGORIES="library"
-export ZOPEN_NAME="zedc"
+export ZOPEN_NAME="check_zedc"
 export ZOPEN_CONFIGURE=skip
 export ZOPEN_CHECK=zopen_check
 export ZOPEN_MAKE=skip
+export ZOPEN_SKIP_ZOSLIB_ENV_HOOK=skip
+export ZOPEN_COMP=CLANG
+export ZOPEN_INSTALL=zopen_install
 
 zopen_check()
 {
   # Nothing to check at this time
 }
 
+zopen_check_results()
+{
+  # Nothing to check here, assume everything passed
+  echo "actualFailures:0"
+  echo "totalTests:1"
+  echo "expectedFailures:1"
+  echo "expectedTotalTests:1"
+}
+
 zopen_append_to_env()
 {
-cat <<ZZ
+cat <<zz
+if [ -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
+    return 0; # Do nothing
+fi
+
+OLD_IFS=\$IFS
+IFS=':'
+zz64found=false
 for p in \$ZOPEN_OLD_LIBPATH; do
-    if [ -x "\$p/libzz64.so" ]; then
+   if [ -x "\$p/libzz64.so" ]; then
         export LIBPATH="\${LIBPATH}:\${p}"
-        export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
-        export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzz64"
-        zz64found=true
+        #export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
+        export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} \${p}/libzz64.so"
+	zz64found=true
         break
-    fi
+   fi
 done
+IFS=\$OLD_IFS
 
 if ! \${zz64found} ; then
-    echo "Unable to find libzz64.so for python" >&2
+    echo "Unable to find libzz64.so" >&2
     return 1
 fi
 return 0
-
-ZZ
+zz
 }
 
 
 zopen_get_version()
 {
   set -e
+  ZEDC_LIB_PATH=
+  OLD_IFS=$IFS
+  IFS=':'
+  for p in $ZOPEN_OLD_LIBPATH; do
+   if [ -x "$p/libzz64.so" ]; then
+	ZEDC_LIB_PATH=$p
+        break
+   fi
+  done
+  IFS=$OLD_IFS
+
   if [ ! -d "$TMPDIR" ]; then
     TMPDIR=/tmp
   fi
@@ -46,10 +77,18 @@ zopen_get_version()
     #include <stdio.h>
 
     int main(int argc, char** argv) {
-      printf("%s", zlibVersion);
+      printf("%s", zlibVersion());
     }
   ' >$TMP_CPP
 
-  (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L ../build/lib -o$TMP_EXE $TMP_CPP -lzz64)
-  $TMP_EXE | tr -d 'v'  && rm $TMP_CPP && rm $TMP_EXE
+ (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L $ZEDC_LIB_PATH -o$TMP_EXE $TMP_CPP $ZEDC_LIB_PATH/libzz64.so)
+  $TMP_EXE | iconv -f IBM1047 -t ISO8859-1 | tr -d 'v'  && rm $TMP_CPP && rm $TMP_EXE
+
 }
+
+
+zopen_install() 
+{
+  mkdir -p $ZOPEN_INSTALL_DIR
+}
+
