@@ -31,20 +31,20 @@ fi
 
 OLD_IFS=\$IFS
 IFS=':'
-zz64found=false
+zzfound=false
 for p in \$ZOPEN_OLD_LIBPATH; do
-   if [ -x "\$p/libzz64.so" ]; then
-        export LIBPATH="\${LIBPATH}:\${p}"
-        #export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
-        export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} \${p}/libzz64.so"
-	zz64found=true
-        break
+   if [ -x "\$p/libzz.a" ]; then
+     export LIBPATH="\${LIBPATH}:\${p}"
+     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
+     export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzz"
+     zzfound=true
+     break
    fi
 done
 IFS=\$OLD_IFS
 
-if ! \${zz64found} ; then
-    echo "Unable to find libzz64.so" >&2
+if ! \${zzfound} ; then
+    echo "Unable to find libzz.a" >&2
     return 1
 fi
 return 0
