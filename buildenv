@@ -1,12 +1,20 @@
-export ZOPEN_TYPE="BARE"
 export ZOPEN_CATEGORIES="library"
-export ZOPEN_NAME="check_zedc"
-export ZOPEN_CONFIGURE=skip
+export ZOPEN_NAME="zedc_ascii"
+export ZOPEN_CONFIGURE="cmake"
+export ZOPEN_CONFIGURE_OPTS="-B ../build  --install-prefix \$ZOPEN_INSTALL_DIR/ -DBUILD_TESTING=ON -DENABLE_STATIC_INIT=ON -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ."
 export ZOPEN_CHECK=zopen_check
-export ZOPEN_MAKE=skip
-export ZOPEN_SKIP_ZOSLIB_ENV_HOOK=skip
+export ZOPEN_MAKE="cmake"
+export ZOPEN_MAKE_OPTS=" --build ../build --parallel \$ZOPEN_NUM_JOBS --target all"
+export ZOPEN_MAKE_MINIMAL="yes"
 export ZOPEN_COMP=CLANG
-export ZOPEN_INSTALL=zopen_install
+
+#export ZOPEN_INSTALL=zopen_install
+
+export ZOPEN_BUILD_LINE="DEV"
+export ZOPEN_DEV_URL="https://github.com/zopencommunity/libzedc_ascii.git"
+export ZOPEN_DEV_DEPS="make cmake git coreutils"
+export ZOPEN_INSTALL="cmake"
+export ZOPEN_INSTALL_OPTS="--install ../build"
 
 zopen_check()
 {
@@ -22,9 +30,10 @@ zopen_check_results()
   echo "expectedTotalTests:1"
 }
 
+
 zopen_append_to_env()
 {
-cat <<zz
+cat <<ZZ
 if [ -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
     return 0; # Do nothing
 fi
@@ -35,8 +44,10 @@ zzfound=false
 for p in \$ZOPEN_OLD_LIBPATH; do
    if [ -x "\$p/libzz.a" ]; then
      export LIBPATH="\${LIBPATH}:\${p}"
-     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\${p}"
-     export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzz"
+     export ZOPEN_EXTRA_CFLAGS="\${ZOPEN_EXTRA_CFLAGS} -I\$PWD/include"
+     export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
+     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib -L\${p}"
+     export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzedc_ascii -lzz"
      zzfound=true
      break
    fi
@@ -48,9 +59,9 @@ if ! \${zzfound} ; then
     return 1
 fi
 return 0
-zz
-}
 
+ZZ
+}
 
 zopen_get_version()
 {
@@ -59,7 +70,7 @@ zopen_get_version()
   OLD_IFS=$IFS
   IFS=':'
   for p in $ZOPEN_OLD_LIBPATH; do
-   if [ -x "$p/libzz64.so" ]; then
+   if [ -x "$p/libzz.a" ]; then
 	ZEDC_LIB_PATH=$p
         break
    fi
@@ -81,11 +92,10 @@ zopen_get_version()
     }
   ' >$TMP_CPP
 
- (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L $ZEDC_LIB_PATH -o$TMP_EXE $TMP_CPP $ZEDC_LIB_PATH/libzz64.so)
-  $TMP_EXE | iconv -f IBM1047 -t ISO8859-1 | tr -d 'v'  && rm $TMP_CPP && rm $TMP_EXE
+ (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L $ZOPEN_INSTALL_DIR/lib -L $ZEDC_LIB_PATH -o$TMP_EXE $TMP_CPP -lzedc_ascii -lzz)
+  $TMP_EXE && rm $TMP_CPP && rm $TMP_EXE
 
 }
-
 
 zopen_install() 
 {
