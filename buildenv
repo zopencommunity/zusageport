@@ -2,34 +2,35 @@ export ZOPEN_CATEGORIES="library"
 export ZOPEN_NAME="zedc_ascii"
 export ZOPEN_CONFIGURE="cmake"
 export ZOPEN_CONFIGURE_OPTS="-B ../build  --install-prefix \$ZOPEN_INSTALL_DIR/ -DBUILD_TESTING=ON -DENABLE_STATIC_INIT=ON -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ."
-export ZOPEN_CHECK=zopen_check
 export ZOPEN_MAKE="cmake"
 export ZOPEN_MAKE_OPTS=" --build ../build --parallel \$ZOPEN_NUM_JOBS --target all"
 export ZOPEN_MAKE_MINIMAL="yes"
 export ZOPEN_COMP=CLANG
 
-#export ZOPEN_INSTALL=zopen_install
-
 export ZOPEN_BUILD_LINE="DEV"
-export ZOPEN_DEV_URL="https://github.com/zopencommunity/libzedc_ascii.git"
+export ZOPEN_DEV_URL="https://github.com/zopencommunity/zedc_ascii.git"
 export ZOPEN_DEV_DEPS="make cmake git coreutils"
 export ZOPEN_INSTALL="cmake"
 export ZOPEN_INSTALL_OPTS="--install ../build"
 
-zopen_check()
-{
-  # Nothing to check at this time
-}
+export ZOPEN_CHECK="cmake"
+export ZOPEN_CHECK_OPTS="--build ../build --target check"
 
 zopen_check_results()
 {
-  # Nothing to check here, assume everything passed
-  echo "actualFailures:0"
-  echo "totalTests:1"
-  echo "expectedFailures:1"
-  echo "expectedTotalTests:1"
+  dir="$1"
+  pfx="$2"
+  chk="$1/$2_check.log"
+  totalTests=$(egrep "^Total tests:" $chk | awk '{ print $3}') 
+  failures=$(egrep "^Failed:" $chk | awk '{ print $2}')
+  
+# Echo the following information to guage build health
+cat <<TEST
+actualFailures:$failures
+totalTests:$totalTests
+expectedFailures:0
+TEST
 }
-
 
 zopen_append_to_env()
 {
@@ -38,26 +39,36 @@ if [ -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
     return 0; # Do nothing
 fi
 
-OLD_IFS=\$IFS
-IFS=':'
 zzfound=false
-for p in \$ZOPEN_OLD_LIBPATH; do
-   if [ -x "\$p/libzz.a" ]; then
-     export LIBPATH="\${LIBPATH}:\${p}"
+ZEDC_LIB_PATH=
+
+if [ -r "/usr/lpp/hzc/lib/libzz.a" ]; then
+     ZEDC_LIB_PATH="/usr/lpp/hzc/lib/"
+     zzfound=true
+else
+     OLD_IFS=\$IFS
+     IFS=':'
+     for p in \$ZOPEN_OLD_LIBPATH; do
+       if [ -r "\$p/libzz.a" ]; then
+         ZEDC_LIB_PATH=$p
+         zzfound=true
+         break
+       fi
+     done
+     IFS=\$OLD_IFS
+fi
+
+if \${zzfound} ; then
+     echo "libzz.a found at \$ZEDC_LIB_PATH"
      export ZOPEN_EXTRA_CFLAGS="\${ZOPEN_EXTRA_CFLAGS} -I\$PWD/include"
      export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
-     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib -L\${p}"
+     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib -L\${ZEDC_LIB_PATH}"
      export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzedc_ascii -lzz"
-     zzfound=true
-     break
-   fi
-done
-IFS=\$OLD_IFS
-
-if ! \${zzfound} ; then
+else
     echo "Unable to find libzz.a" >&2
     return 1
 fi
+
 return 0
 
 ZZ
@@ -65,40 +76,6 @@ ZZ
 
 zopen_get_version()
 {
-  set -e
-  ZEDC_LIB_PATH=
-  OLD_IFS=$IFS
-  IFS=':'
-  for p in $ZOPEN_OLD_LIBPATH; do
-   if [ -x "$p/libzz.a" ]; then
-	ZEDC_LIB_PATH=$p
-        break
-   fi
-  done
-  IFS=$OLD_IFS
-
-  if [ ! -d "$TMPDIR" ]; then
-    TMPDIR=/tmp
-  fi
-  TMP_EXE=$TMPDIR/zedclibver$$
-  TMP_CPP=$TMPDIR/zedclibver$$.cc
-
-  echo '
-    #include <zlib.h>
-    #include <stdio.h>
-
-    int main(int argc, char** argv) {
-      printf("%s", zlibVersion());
-    }
-  ' >$TMP_CPP
-
- (export ZOPEN_OLD_PATH=$PATH; PATH="$ZOPEN_OLD_PATH" $CXX $CXXFLAGS $CPPFLAGS -isystem include -isystem include/c++/v1/ -L $ZOPEN_INSTALL_DIR/lib -L $ZEDC_LIB_PATH -o$TMP_EXE $TMP_CPP -lzedc_ascii -lzz)
-  $TMP_EXE && rm $TMP_CPP && rm $TMP_EXE
-
-}
-
-zopen_install() 
-{
-  mkdir -p $ZOPEN_INSTALL_DIR
+	../build/tests/getVersion
 }
 
