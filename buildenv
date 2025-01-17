@@ -1,5 +1,5 @@
 export ZOPEN_CATEGORIES="library"
-export ZOPEN_NAME="zedc_ascii"
+export ZOPEN_NAME="zusage"
 export ZOPEN_CONFIGURE="cmake"
 export ZOPEN_CONFIGURE_OPTS="-B ../build  --install-prefix \$ZOPEN_INSTALL_DIR/ -DBUILD_TESTING=ON -DENABLE_STATIC_INIT=ON -DCMAKE_INSTALL_PREFIX=\$ZOPEN_INSTALL_DIR/ -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ."
 export ZOPEN_MAKE="cmake"
@@ -8,10 +8,12 @@ export ZOPEN_MAKE_MINIMAL="yes"
 export ZOPEN_COMP=CLANG
 
 export ZOPEN_BUILD_LINE="DEV"
-export ZOPEN_DEV_URL="https://github.com/zopencommunity/zedc_ascii.git"
+export ZOPEN_DEV_URL="git@github.com:zopencommunity/zusage.git"
 export ZOPEN_DEV_DEPS="make cmake git coreutils"
 export ZOPEN_INSTALL="cmake"
 export ZOPEN_INSTALL_OPTS="--install ../build"
+
+export ZOPEN_RUNTIME_DEPS="zoslib" # depends on zoslib 
 
 export ZOPEN_CHECK="cmake"
 export ZOPEN_CHECK_OPTS="--build ../build --target check"
@@ -39,43 +41,14 @@ if [ -z "\$ZOPEN_IN_ZOPEN_BUILD" ]; then
     return 0; # Do nothing
 fi
 
-zzfound=false
-ZEDC_LIB_PATH=
-
-if [ -r "/usr/lpp/hzc/lib/libzz.a" ]; then
-     ZEDC_LIB_PATH="/usr/lpp/hzc/lib/"
-     zzfound=true
-else
-     OLD_IFS=\$IFS
-     IFS=':'
-     for p in \$ZOPEN_OLD_LIBPATH; do
-       if [ -r "\$p/libzz.a" ]; then
-         ZEDC_LIB_PATH=$p
-         zzfound=true
-         break
-       fi
-     done
-     IFS=\$OLD_IFS
-fi
-
-if \${zzfound} ; then
-     echo "libzz.a found at \$ZEDC_LIB_PATH"
-     export ZOPEN_EXTRA_CFLAGS="\${ZOPEN_EXTRA_CFLAGS} -I\$PWD/include"
-     export ZOPEN_EXTRA_CXXFLAGS="\${ZOPEN_EXTRA_CXXFLAGS} -I\$PWD/include"
-     export ZOPEN_EXTRA_LDFLAGS="\${ZOPEN_EXTRA_LDFLAGS} -L\$PWD/lib -L\${ZEDC_LIB_PATH}"
-     export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} -lzedc_ascii -lzz"
-else
-    echo "Unable to find libzz.a" >&2
-    return 1
-fi
+export ZOPEN_EXTRA_LIBS="\${ZOPEN_EXTRA_LIBS} \$PWD/lib/zusage.c.o"
 
 return 0
-
 ZZ
 }
 
 zopen_get_version()
 {
-	../build/tests/getVersion
+	echo "1.0.0"
 }
 
